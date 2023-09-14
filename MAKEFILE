@@ -1,0 +1,63 @@
+# Makefile macros (or variables) are defined a little bit differently than 
+# traditional bash. Keep in mind that in the Makefile there's top-level Makefile-only 
+# syntax, and everything else is bash script syntax.
+# For example You cannot use the bash constant $HOME inside your command.
+# Instead you must assign it to a constant which can be used in the commands in 
+# the Makefile.
+PYTHON_VERSION = 3.8
+VENV_NAME = real_python_tutorials
+VENV_PATH = $(HOME)/venv/$(VENV_NAME)
+PYTHON = $(VENV_PATH)/Scripts/python
+PYPI_URL = --extra-index-url=http://pypi.electroroute.com/simple --trusted-host=pypi.electroroute.com
+PIP_CONFIG = --no-emit-index-url --resolver=backtracking
+BITBUCKET_REPO = git@bitbucket.org:electroroute_code/python_coding_standards.git
+BITBUCKET_BRANCH = main
+
+# The purpose of .PHONY in a Makefile is to specify targets that represent actions 
+# to be executed, rather than files to be built, and to always execute those actions 
+# regardless of the presence of a file with the same name.
+.PHONY: help setup-repo create-env update-env setup test format-files clean docs test-all
+
+# Defines the default target that `make` will to try to make, or in the case of 
+# a phony target, execute the specified commands
+# This target is executed whenever we just enter the command `make`
+.DEFAULT_GOAL = help
+
+# The @ makes sure that the command itself isn't echoed in the terminal
+help:
+	@echo "---------------HELP-----------------"
+	@echo "* Note: All make commands must be run in a bash shell (not a CMD or PowerShell CLI)"
+	@echo ""
+	@echo "* To setup the repository and the virtual environment from scratch enter the command 'make setup'"
+	@echo "* To update all the requirements files and the virtual environment enter the command 'make update-env'"
+	@echo "* To format the project files enter the command 'make format-files'"
+	@echo "* To remove the virtual environment enter the command 'make clean'"
+	@echo "------------------------------------"
+
+# Create the virtual environment
+create-env:
+	py -$(PYTHON_VERSION) -m venv $(VENV_PATH)
+	$(PYTHON) -m pip install --upgrade pip pip-tools wheel setuptools
+
+# Compile the requirements file and install it in the virtual environment.
+# Sync the requirements_dev.txt and the virtual environment.
+# Install the current project as an editable library in the virtual environment.
+update-env:
+	rm -f requirements.txt
+	rm -f requirements_dev.txt
+	$(PYTHON) -m piptools compile $(PYPI_URL) $(PIP_CONFIG) requirements_dev.in
+	$(PYTHON) -m pip install $(PYPI_URL) --requirement requirements_dev.txt
+	$(VENV_PATH)/Scripts/pip-sync requirements_dev.txt
+	$(PYTHON) -m pip install -e .
+
+# Setup a new development environment from scratch
+setup: create-env update-env
+
+# Format the files in the project
+format-files:
+	black .
+	isort .
+
+# Delete the virtual environment
+clean:
+	rm -rf $(VENV_PATH)
